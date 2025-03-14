@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block title %}登入 - To-Do Manager{% endblock %}
+{% block content %}
+    <div class="card p-4">
+        <h2 class="text-center mb-4">登入</h2>
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="btn btn-custom w-100">登入</button>
+        </form>
+        <p class="text-center mt-3">還沒帳號？<a href="{% url 'register' %}" class="text-primary">註冊</a></p>
+    </div>
+{% endblock %}

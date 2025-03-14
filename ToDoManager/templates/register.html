@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block title %}註冊 - To-Do Manager{% endblock %}
+{% block content %}
+    <div class="card p-4">
+        <h2 class="text-center mb-4">註冊帳號</h2>
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="btn btn-custom w-100">註冊</button>
+        </form>
+        <p class="text-center mt-3">已有帳號？<a href="{% url 'login' %}" class="text-primary">登入</a></p>
+    </div>
+{% endblock %}
