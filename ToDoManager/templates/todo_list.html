@@ -4,6 +4,38 @@
     <div class="card p-4">
         <h2 class="text-center mb-4">待辦清單</h2>
         <p>歡迎，{{ user.username }}！</p>
-        <a href="{% url 'logout_view' %}" class="btn btn-outline-danger w-100">登出</a>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>標題</th>
+                    <th>描述</th>
+                    <th>截止日期</th>
+                    <th>優先級</th>
+                    <th>狀態</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for todo in todos %}
+                <tr>
+                    <td>{{ todo.title }}</td>
+                    <td>{{ todo.description|default:"無" }}</td>
+                    <td>{{ todo.due_date|date:"Y-m-d" }}</td>
+                    <td>{{ todo.priority }}</td>
+                    <td>{% if todo.completed %}<span class="badge bg-success">已完成</span>{% else %}<span class="badge bg-warning">未完成</span>{% endif %}</td>
+                    <td>
+                        <a href="{% url 'edit_todo' todo.id %}" class="btn btn-sm btn-primary">編輯</a>
+                        <a href="{% url 'delete_todo' todo.id %}" class="btn btn-sm btn-danger">刪除</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center">尚無待辦事項</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <a href="{% url 'add_todo' %}" class="btn btn-success w-100 mt-3">新增待辦事項</a>
+        <a href="{% url 'logout_view' %}" class="btn btn-outline-danger w-100 mt-3">登出</a>
     </div>
 {% endblock %}

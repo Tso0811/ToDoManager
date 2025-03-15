@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block title %}編輯待辦事項 - To-Do Manager{% endblock %}
+{% block content %}
+    <div class="card p-4">
+        <h2 class="text-center mb-4">編輯待辦事項</h2>
+        <form method="post">
+            {% csrf_token %}
+            {% for field in form %}
+                <div class="mb-3">
+                    {{ field.label_tag }}
+                    {{ field }}
+                    {% if field.errors %}
+                        <small class="text-danger">{{ field.errors|striptags }}</small>
+                    {% endif %}
+                </div>
+            {% endfor %}
+            <button type="submit" class="btn btn-success w-100">保存</button>
+        </form>
+        <a href="{% url 'todo_list' %}" class="btn btn-secondary w-100 mt-3">返回</a>
+    </div>
+{% endblock %}
