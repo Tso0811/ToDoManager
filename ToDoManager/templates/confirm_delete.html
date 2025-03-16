@@ -4,10 +4,10 @@
     <div class="card p-4">
         <h2 class="text-center mb-4">確認刪除</h2>
         <p>確定要刪除「{{ todo.title }}」嗎？</p>
-        <form method="post">
+        <form action="{% url 'confirm_delete' todo.id %}" method="post">
             {% csrf_token %}
             <button type="submit" class="btn btn-danger w-100">刪除</button>
         </form>
-        <a href="{% url 'todo_list' %}" class="btn btn-secondary w-100 mt-3">取消</a>
+        <a href="{% url 'todos' %}" class="btn btn-secondary w-100 mt-3">取消</a>
     </div>
 {% endblock %}

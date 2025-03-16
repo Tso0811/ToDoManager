@@ -23,6 +23,10 @@ urlpatterns = [
     path('login/' , views.login_view , name = 'login_view'),
     path('register/' , views.register , name = 'register'),
     path('todos/' , views.todos , name = 'todos'),
-    path('logout/' , views.logout_view , name = 'logout_view')
-
+    path('logout/' , views.logout_view , name = 'logout_view'),
+    path('todos/add/' , views.add_todo , name = 'add_todo'),
+    path('todos/edit/<int:id>' , views.edit_todo , name = 'edit_todo'),
+    path('todos/to_confirm_page/<int:id>' , views.to_confirm_page , name = 'to_confirm_page') , 
+    path('todos/delete/<int:id>' , views.confirm_delete , name = 'confirm_delete'),
+    
 ]
