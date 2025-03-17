@@ -4,7 +4,8 @@ from django.contrib import messages
 from django.contrib.auth import authenticate , login , logout
 from django.contrib.auth.decorators import login_required
 from ToDos.models import ToDo
-# Create your views here.
+from .form import TodoForm
+
 def login_view(request):  #若取名為login會與django內建方法撞名
     form = AuthenticationForm() 
     if request.method == 'POST' :
@@ -42,13 +43,33 @@ def logout_view(request):
     logout(request)
     return redirect('login_view')
 
-@login_required    #未完  
+@login_required  
 def add_todo(request):
-    return render (request , add_todo , locals())
+    form = TodoForm(request.POST)
+    if form.is_valid():
+        todo = form.save(commit = False)    #新增的欄位沒有user 但在models.py user欄位為必填 若直接保存會報錯
+        todo.user = request.user            #將user欄位指定為當前使用者
+        todo.save()
+        messages.success(request , '新增成功')
+        return redirect('todos')
+    else:
+        form = TodoForm()
+
+    return render (request , 'add_todo.html' , {'form':form})
 
 @login_required
-def edit_todo(request):
-    return render (request , 'edit_todo.html' )
+def edit_todo(request, id):
+    todo = get_object_or_404(ToDo, user=request.user, id=id)
+    
+    if request.method == 'POST':
+        form = TodoForm(request.POST, instance=todo) #用於將現有的資料庫實例與表單關聯起來 且更新而非創建
+        if form.is_valid():
+            form.save()
+            messages.success(request , '編輯完成')
+            return redirect('todos')
+    else:
+        form = TodoForm(instance=todo)
+    return render(request, 'edit_todo.html', {'forms': form})
 
 @login_required
 def to_confirm_page(request , id):
