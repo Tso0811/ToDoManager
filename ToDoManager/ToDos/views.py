@@ -5,6 +5,8 @@ from django.contrib.auth import authenticate , login , logout
 from django.contrib.auth.decorators import login_required
 from ToDos.models import ToDo
 from .form import TodoForm
+from django.utils import timezone
+
 
 def login_view(request):  #若取名為login會與django內建方法撞名
     form = AuthenticationForm() 
@@ -36,8 +38,20 @@ def register(request):
 
 @login_required(login_url='login_view') #若使用者透過get方法進入 則導向註冊畫面
 def todos(request): 
-    todos = ToDo.objects.filter(user = request.user)
-    return render (request , 'todo_list.html' , {'todos':todos})
+
+    filter_option = request.GET.get('filter', 'all')    # 取得篩選條件，預設為 'all'
+  
+    if filter_option == 'completed':
+        todos_list = ToDo.objects.filter(user=request.user, completed=True)
+    elif filter_option == 'incomplete':
+        todos_list = ToDo.objects.filter(user=request.user, completed=False)
+    else: 
+        todos_list = ToDo.objects.filter(user=request.user)
+    
+    today = timezone.now()
+  
+
+    return render (request , 'todo_list.html' ,  {'todos': todos_list, 'filter': filter_option , 'today' : today})
 
 def logout_view(request):
     logout(request)
@@ -81,4 +95,15 @@ def confirm_delete(request , id):
     todo = get_object_or_404(ToDo , id = id)
     todo.delete()
     messages.success(request , '成功刪除')
+    return redirect('todos')
+
+@login_required
+def toggle_todo(request , id):
+    todo = get_object_or_404(ToDo , id = id , user = request.user)
+    if request.method == 'POST' and todo.completed == False:
+        todo.completed = True
+        todo.save()
+    else :
+        todo.completed = False
+        todo.save()
     return redirect('todos')

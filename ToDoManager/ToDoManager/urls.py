@@ -28,5 +28,6 @@ urlpatterns = [
     path('todos/edit/<int:id>' , views.edit_todo , name = 'edit_todo'),
     path('todos/to_confirm_page/<int:id>' , views.to_confirm_page , name = 'to_confirm_page') , 
     path('todos/delete/<int:id>' , views.confirm_delete , name = 'confirm_delete'),
+    path('todos/toggle/<int:id>' , views.toggle_todo , name = 'toggle_todo'),
     
 ]

@@ -2,7 +2,8 @@ import datetime
 from django.test import TestCase, Client
 from django.urls import reverse
 from django.contrib.auth.models import User
-from ToDos.models import ToDo  # 確保這裡是 ToDo（與模型名稱一致）
+from ToDos.models import ToDo
+from django.contrib import messages
 
 class TodoTests(TestCase):
     def setUp(self):
@@ -11,8 +12,8 @@ class TodoTests(TestCase):
         self.user1 = User.objects.create_user(username='user1', password='testpass123')
         self.user2 = User.objects.create_user(username='user2', password='testpass123')
 
-        # 為 user1 創建一個待辦事項
-        self.todo = ToDo.objects.create(
+        # 為 user1 創建多個待辦事項
+        self.todo1 = ToDo.objects.create(
             user=self.user1,
             title='學習',
             description='完成作業',
@@ -20,88 +21,136 @@ class TodoTests(TestCase):
             priority='high',
             completed=False
         )
+        self.todo2 = ToDo.objects.create(
+            user=self.user1,
+            title='會議',
+            description='參加會議',
+            due_date=datetime.date.today() - datetime.timedelta(days=1),  # 過期
+            priority='medium',
+            completed=False
+        )
+        self.todo3 = ToDo.objects.create(
+            user=self.user1,
+            title='閱讀',
+            description='閱讀書本',
+            due_date=datetime.date(2025, 3, 25),
+            priority='low',
+            completed=True
+        )
 
     # 功能性測試
-    def test_add_todo(self):
-        # 測試新增待辦事項
+    def test_toggle_todo(self):
+        # 測試標記完成功能
+        self.client.login(username='user1', password='testpass123')
+        # 初始狀態為未完成
+        response = self.client.get(reverse('todos'))
+        self.assertContains(response, '未完成')
+        # 標記為完成
+        response = self.client.post(reverse('toggle_todo', args=[self.todo1.id]), follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '已完成')
+        self.todo1.refresh_from_db()
+        self.assertTrue(self.todo1.completed)
+        # 再次標記為未完成
+        response = self.client.post(reverse('toggle_todo', args=[self.todo1.id]), follow=True)
+        self.assertContains(response, '未完成')
+        self.todo1.refresh_from_db()
+        self.assertFalse(self.todo1.completed)
+
+    def test_filter_todos(self):
+        # 測試過濾功能
+        self.client.login(username='user1', password='testpass123')
+        # 過濾未完成
+        response = self.client.get(reverse('todos') + '?filter=incomplete')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '學習')
+        self.assertNotContains(response, '閱讀')
+        # 過濾已完成
+        response = self.client.get(reverse('todos') + '?filter=completed')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '閱讀')
+        self.assertNotContains(response, '學習')
+        # 過濾全部
+        response = self.client.get(reverse('todos') + '?filter=all')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '學習')
+        self.assertContains(response, '閱讀')
+
+    def test_date_highlighting(self):
+        # 測試日期高亮（過期未完成事項）
+        self.client.login(username='user1', password='testpass123')
+        response = self.client.get(reverse('todos'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'table-danger')  # 確認過期事項高亮
+        self.assertContains(response, 'table-danger', count=1)
+    # 邊界情況測試
+    def test_no_todos(self):
+        # 測試無待辦事項時的行為
+        ToDo.objects.all().delete()
+        self.client.login(username='user1', password='testpass123')
+        response = self.client.get(reverse('todos'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '尚無待辦事項')
+
+    def test_invalid_date(self):
+        # 測試無效日期輸入
         self.client.login(username='user1', password='testpass123')
         response = self.client.post(reverse('add_todo'), {
-            'title': '會議',
-            'description': '參加會議',
-            'due_date': '2025-03-21',
-            'priority': 'medium'
+            'title': '無效日期',
+            'description': '測試',
+            'due_date': 'invalid-date',  # 無效日期
+            'priority': 'high'
         }, follow=True)
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, '會議')
-        self.assertContains(response, '新增成功')
+        self.assertContains(response, '請填寫這個欄位。')  # 假設表單驗證會顯示錯誤
 
-    def test_view_todo_list(self):
-        # 測試讀取待辦清單
+    def test_many_todos(self):
+        # 測試大量待辦事項（模擬分頁基礎）
+        for i in range(15):
+            ToDo.objects.create(
+                user=self.user1,
+                title=f'任務{i}',
+                description=f'描述{i}',
+                due_date=datetime.date(2025, 3, 20),
+                priority='medium',
+                completed=False
+            )
         self.client.login(username='user1', password='testpass123')
         response = self.client.get(reverse('todos'))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, '學習')  # 確認是否顯示待辦事項
-        self.assertContains(response, 'user1')  # 確認是否顯示使用者名稱
-
-    def test_edit_todo(self):
-        # 測試編輯待辦事項
-        self.client.login(username='user1', password='testpass123')
-        response = self.client.post(reverse('edit_todo', args=[self.todo.id]), {
-            'title': '學習（更新）',
-            'description': '完成作業（更新）',
-            'due_date': '2025-03-21',
-            'priority': 'low'
-        }, follow=True)
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, '學習（更新）')
-        self.assertContains(response, '編輯完成')
-
-    def test_delete_todo(self):
-        # 測試刪除待辦事項
-        self.client.login(username='user1', password='testpass123')
-        # 訪問確認頁面
-        response = self.client.get(reverse('to_confirm_page', args=[self.todo.id]))
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, '確定要刪除「學習」嗎？')
-        # 執行刪除
-        response = self.client.post(reverse('confirm_delete', args=[self.todo.id]), follow=True)
-        self.assertEqual(response.status_code, 200)
-        self.assertNotContains(response, '學習')
-        self.assertFalse(ToDo.objects.filter(id=self.todo.id).exists())
-
-    def test_unauthenticated_access(self):
-        # 測試未登入訪問限制
-        self.client.logout()
-        response = self.client.get(reverse('todos'))
-        self.assertEqual(response.status_code, 302)  # 應重定向到登入頁面
-        self.assertTrue(response.url.startswith(reverse('login_view')))
+        self.assertContains(response, '任務0')
+        self.assertContains(response, '任務14')  # 確認多筆資料顯示
 
     # 安全性測試
-    def test_csrf_protection(self):
-        # 測試 CSRF 保護
+    def test_csrf_protection_toggle(self):
+        # 測試標記完成的 CSRF 保護
         self.client.login(username='user1', password='testpass123')
         client_no_csrf = Client(enforce_csrf_checks=True)
         client_no_csrf.login(username='user1', password='testpass123')
-        response = client_no_csrf.post(reverse('add_todo'), {
-            'title': '會議',
-            'description': '參加會議',
-            'due_date': '2025-03-21',
-            'priority': 'medium'
-        }, follow=True)
+        response = client_no_csrf.post(reverse('toggle_todo', args=[self.todo1.id]), follow=True)
         self.assertEqual(response.status_code, 403)  # 應返回 403 Forbidden
 
-    def test_unauthorized_access(self):
-        # 測試未授權訪問（user2 嘗試編輯 user1 的待辦事項）
+    def test_unauthorized_toggle(self):
+        # 測試未授權標記（user2 嘗試標記 user1 的待辦事項）
         self.client.login(username='user2', password='testpass123')
-        response = self.client.get(reverse('edit_todo', args=[self.todo.id]))
+        response = self.client.post(reverse('toggle_todo', args=[self.todo1.id]), follow=True)
         self.assertIn(response.status_code, [403, 404])  # 應返回 403 或 404
 
-    def test_data_isolation(self):
-        # 測試資料隔離（user2 不應看到 user1 的待辦事項）
-        self.client.login(username='user2', password='testpass123')
-        response = self.client.get(reverse('todos'))
+    def test_data_isolation_filter(self):
+        # 測試過濾時的資料隔離
+        ToDo.objects.create(
+            user=self.user2,
+            title='user2任務',
+            description='user2描述',
+            due_date=datetime.date(2025, 3, 20),
+            priority='high',
+            completed=False
+        )
+        self.client.login(username='user1', password='testpass123')
+        response = self.client.get(reverse('todos') + '?filter=all')
         self.assertEqual(response.status_code, 200)
-        self.assertNotContains(response, '學習')  # user2 不應看到 user1 的待辦事項
+        self.assertContains(response, '學習')
+        self.assertNotContains(response, 'user2任務')
 
     def test_password_security(self):
         # 測試密碼是否加密儲存

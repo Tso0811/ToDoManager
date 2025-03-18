@@ -4,6 +4,26 @@
     <div class="card p-4">
         <h2 class="text-center mb-4">待辦清單</h2>
         <p>歡迎，{{ user.username }}！</p>
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+        <!-- 過濾選項 -->
+        <div class="mb-3">
+            <form method="get" class="d-flex gap-2">
+                <select name="filter" class="form-select w-auto">
+                    <option value="all" {% if filter == 'all' %}selected{% endif %}>全部</option>
+                    <option value="completed" {% if filter == 'completed' %}selected{% endif %}>已完成</option>
+                    <option value="incomplete" {% if filter == 'incomplete' %}selected{% endif %}>未完成</option>
+                </select>
+                <button type="submit" class="btn btn-primary">過濾</button>
+            </form>
+        </div>
+        <!-- 待辦事項表格 -->
         <table class="table table-striped">
             <thead>
                 <tr>
@@ -17,20 +37,28 @@
             </thead>
             <tbody>
                 {% for todo in todos %}
-                <tr>
+                <tr {% if todo.due_date|date:"Y-m-d" < today|date:"Y-m-d" and not todo.completed %}class="table-danger"{% endif %}>
                     <td>{{ todo.title }}</td>
                     <td>{{ todo.description|default:"無" }}</td>
                     <td>{{ todo.due_date|date:"Y-m-d" }}</td>
                     <td>{{ todo.priority }}</td>
                     <td>{% if todo.completed %}<span class="badge bg-success">已完成</span>{% else %}<span class="badge bg-warning">未完成</span>{% endif %}</td>
                     <td>
+                        <form method="post" action="{% url 'toggle_todo' todo.id %}" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm {% if todo.completed %}btn-secondary{% else %}btn-success{% endif %}">
+                                {% if todo.completed %}標記未完成{% else %}標記完成{% endif %}
+                            </button>
+                        </form>
                         <a href="{% url 'edit_todo' todo.id %}" class="btn btn-sm btn-primary">編輯</a>
                         <a href="{% url 'to_confirm_page' todo.id %}" class="btn btn-sm btn-danger">刪除</a>
                     </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="6" class="text-center">尚無待辦事項</td>
+                    <td colspan="6" class="text-center">
+                        尚無待辦事項，<a href="{% url 'add_todo' %}">點此新增</a>！
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
